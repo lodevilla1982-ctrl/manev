@@ -2,12 +2,13 @@
 import numpy as np
 import trimesh
 import os
+from pathlib import Path
 
 class FunkoChibiGenerator:
     def __init__(self):
+        self.assets_path = "assets"
         self.tolerance = -0.05
         self.scale = 1.0
-        self.character_type = "human"
         self.gender = "male"
         self.hair_style = "short"
         self.clothing = "none"
@@ -15,114 +16,21 @@ class FunkoChibiGenerator:
     def set_tolerance(self, tol):
         self.tolerance = tol
 
-    def create_basic_head(self, scale=1.0):
-        """Crear cabeza básica estilo chibi"""
-        # Esfera como base
-        head = trimesh.creation.icosphere(subdivisions=2, radius=0.8 * scale)
-        # Aplanar ligeramente
-        vertices = head.vertices.copy()
-        vertices[:, 1] *= 0.9  # Aplanar en Y
-        head.vertices = vertices
-        return head
-
-    def create_basic_hair(self, style="short", scale=1.0):
-        """Crear cabello básico"""
-        if style == "short":
-            hair = trimesh.creation.icosphere(subdivisions=2, radius=0.85 * scale)
-            # Hacerlo ligeramente más alto
-            vertices = hair.vertices.copy()
-            vertices[:, 2] += 0.1 * scale  # Subir en Z
-            hair.vertices = vertices
-        elif style == "long":
-            # Cilindro para pelo largo
-            hair = trimesh.creation.cylinder(radius=0.7 * scale, height=0.3 * scale, sections=16)
-            hair.apply_translation([0, 0, 0.5 * scale])
-        else:
-            # Sin pelo - malla vacía
-            hair = trimesh.Trimesh()
-        return hair
-
-    def create_basic_eye(self, side="left", scale=1.0):
-        """Crear ojo básico"""
-        offset_x = -0.3 * scale if side == "left" else 0.3 * scale
-        offset_y = 0.4 * scale
-        offset_z = 0.0
-        
-        # Ojo blanco
-        eye_white = trimesh.creation.icosphere(subdivisions=1, radius=0.1 * scale)
-        eye_white.apply_translation([offset_x, offset_y, offset_z])
-        
-        # Pupila
-        pupil = trimesh.creation.icosphere(subdivisions=1, radius=0.06 * scale)
-        pupil.apply_translation([offset_x, offset_y + 0.02, offset_z])
-        
-        return eye_white, pupil
-
-    def create_basic_torso(self, scale=1.0):
-        """Crear torso básico"""
-        torso = trimesh.creation.box(extents=[0.6 * scale, 0.4 * scale, 0.8 * scale])
-        torso.apply_translation([0, 0, 1.2 * scale])
-        return torso
-
-    def create_basic_arm(self, side="left", scale=1.0):
-        """Crear brazo básico"""
-        arm = trimesh.creation.cylinder(radius=0.15 * scale, height=1.0 * scale, sections=16)
-        if side == "left":
-            arm.apply_translation([-0.5 * scale, 0, 1.2 * scale])
-        else:
-            arm.apply_translation([0.5 * scale, 0, 1.2 * scale])
-        # Rotar para que apunte hacia abajo
-        rotation_matrix = trimesh.transformations.rotation_matrix(
-            np.pi/2, [1, 0, 0])
-        arm.apply_transform(rotation_matrix)
-        return arm
-
-    def create_basic_leg(self, side="left", scale=1.0):
-        """Crear pierna básica"""
-        leg = trimesh.creation.cylinder(radius=0.18 * scale, height=1.5 * scale, sections=16)
-        if side == "left":
-            leg.apply_translation([-0.25 * scale, 0, 0.3 * scale])
-        else:
-            leg.apply_translation([0.25 * scale, 0, 0.3 * scale])
-        # Rotar para que apunte hacia abajo
-        rotation_matrix = trimesh.transformations.rotation_matrix(
-            np.pi/2, [1, 0, 0])
-        leg.apply_transform(rotation_matrix)
-        return leg
-
-    def create_basic_hand(self, side="left", scale=1.0):
-        """Crear mano básica"""
-        hand = trimesh.creation.icosphere(subdivisions=1, radius=0.12 * scale)
-        if side == "left":
-            hand.apply_translation([-0.5 * scale, 0, 0.2 * scale])
-        else:
-            hand.apply_translation([0.5 * scale, 0, 0.2 * scale])
-        return hand
-
-    def create_basic_foot(self, side="left", scale=1.0):
-        """Crear pie básico"""
-        foot = trimesh.creation.icosphere(subdivisions=1, radius=0.15 * scale)
-        # Hacerlo más ancho
-        vertices = foot.vertices.copy()
-        vertices[:, 1] *= 1.5  # Ancho en Y
-        vertices[:, 2] *= 0.5  # Alto en Z
-        foot.vertices = vertices
-        
-        if side == "left":
-            foot.apply_translation([-0.25 * scale, 0, -0.8 * scale])
-        else:
-            foot.apply_translation([0.25 * scale, 0, -0.8 * scale])
-        return foot
+    def load_model(self, path):
+        """Cargar modelo STL desde assets"""
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Modelo no encontrado: {path}")
+        return trimesh.load(path)
 
     def create_socket(self, location, radius=0.1, depth=0.1, tolerance=-0.05):
         """Crear socket de encastre"""
-        socket = trimesh.creation.cylinder(radius=radius - tolerance, height=depth, sections=16)
+        socket = trimesh.creation.cylinder(radius=radius - tolerance, height=depth)
         socket.apply_translation(location)
         return socket
 
     def create_insert(self, location, radius=0.1, depth=0.12, tolerance=-0.05):
         """Crear inserto para encajar"""
-        insert = trimesh.creation.cylinder(radius=radius + tolerance, height=depth, sections=16)
+        insert = trimesh.creation.cylinder(radius=radius + tolerance, height=depth)
         insert.apply_translation(location)
         return insert
 
@@ -136,74 +44,86 @@ class FunkoChibiGenerator:
         except:
             return base_mesh
 
+    def generate_head_with_hair(self, head_path, hair_path, scale=1.0):
+        """Generar cabeza con corte para pelo"""
+        # Cargar modelos
+        head = self.load_model(head_path)
+        hair = self.load_model(hair_path)
+        
+        # Escalar
+        head.apply_scale(scale)
+        hair.apply_scale(scale)
+        
+        # Alinear posiciones
+        hair.apply_translation([0, 0, 0.1 * scale])  # Ligeramente arriba
+        
+        # Cortar hueco en la cabeza para el pelo
+        head_with_cut = self.subtract_mesh(head, hair)
+        
+        return head_with_cut, hair
+
+    def generate_eyes(self, eye_white_path, pupil_path, scale=1.0):
+        """Generar ojos con pupila"""
+        eye_white = self.load_model(eye_white_path)
+        pupil = self.load_model(pupil_path)
+        
+        # Escalar
+        eye_white.apply_scale(scale)
+        pupil.apply_scale(scale)
+        
+        # Posicionar pupila dentro del ojo blanco
+        pupil.apply_translation([0, 0, 0.01])
+        
+        # Cortar hueco en el ojo blanco para la pupila
+        eye_with_pupil = self.subtract_mesh(eye_white, pupil)
+        
+        return eye_with_pupil, pupil
+
     def generate_full_model(self):
-        """Generar modelo completo"""
+        """Generar modelo completo con todas las partes"""
         parts = {}
         scale = self.scale
         
-        # Cabeza
-        head = self.create_basic_head(scale)
-        parts["head"] = head
+        # Rutas de modelos
+        base_dir = os.path.join(self.assets_path, "heads")
+        head_path = os.path.join(base_dir, f"{self.gender}_head.stl")
+        hair_dir = os.path.join(self.assets_path, "hair")
+        hair_path = os.path.join(hair_dir, f"{self.hair_style}_{self.gender}.stl")
         
-        # Pelo (si no es calvo)
-        if self.hair_style != "bald":
-            hair = self.create_basic_hair(self.hair_style, scale)
-            # Restar el pelo de la cabeza para crear hueco
-            head_with_hair_cut = self.subtract_mesh(head, hair)
-            parts["head"] = head_with_hair_cut
-            parts["hair"] = hair
+        # Cabeza con corte para pelo
+        head, hair = self.generate_head_with_hair(head_path, hair_path, scale)
+        parts["head"] = head
+        parts["hair"] = hair
         
         # Ojos
-        eye_left, pupil_left = self.create_basic_eye("left", scale)
-        eye_right, pupil_right = self.create_basic_eye("right", scale)
-        parts["eye_left"] = eye_left
-        parts["pupil_left"] = pupil_left
-        parts["eye_right"] = eye_right
-        parts["pupil_right"] = pupil_right
+        eye_white_path = os.path.join(self.assets_path, "eyes", "eye_white.stl")
+        pupil_path = os.path.join(self.assets_path, "eyes", "pupil_black.stl")
+        eye, pupil = self.generate_eyes(eye_white_path, pupil_path, scale)
+        parts["eye"] = eye
+        parts["pupil"] = pupil
         
         # Torso
-        parts["torso"] = self.create_basic_torso(scale)
+        torso_path = os.path.join(self.assets_path, "body", f"{self.gender}_torso.stl")
+        torso = self.load_model(torso_path)
+        torso.apply_scale(scale)
+        parts["torso"] = torso
         
         # Brazos
-        parts["arm_left"] = self.create_basic_arm("left", scale)
-        parts["arm_right"] = self.create_basic_arm("right", scale)
-        
-        # Manos
-        parts["hand_left"] = self.create_basic_hand("left", scale)
-        parts["hand_right"] = self.create_basic_hand("right", scale)
+        arm_path = os.path.join(self.assets_path, "arms", "arm_left.stl")
+        arm = self.load_model(arm_path)
+        arm.apply_scale(scale)
+        parts["arm"] = arm
         
         # Piernas
-        parts["leg_left"] = self.create_basic_leg("left", scale)
-        parts["leg_right"] = self.create_basic_leg("right", scale)
+        leg_path = os.path.join(self.assets_path, "legs", "leg_left.stl")
+        leg = self.load_model(leg_path)
+        leg.apply_scale(scale)
+        parts["leg"] = leg
         
-        # Pies
-        parts["foot_left"] = self.create_basic_foot("left", scale)
-        parts["foot_right"] = self.create_basic_foot("right", scale)
-        
-        # Conectores - Cuello
+        # Conectores
         neck_location = [0, 0, 1.8 * scale]
         parts["neck_socket"] = self.create_socket(neck_location, 0.1 * scale, 0.1 * scale, self.tolerance)
         parts["neck_insert"] = self.create_insert(neck_location, 0.1 * scale, 0.12 * scale, self.tolerance)
-        
-        # Conectores - Brazos
-        arm_locations = [
-            [-0.5 * scale, 0, 1.2 * scale],  # Izquierdo
-            [0.5 * scale, 0, 1.2 * scale]    # Derecho
-        ]
-        for i, loc in enumerate(arm_locations):
-            side = "left" if i == 0 else "right"
-            parts[f"arm_socket_{side}"] = self.create_socket(loc, 0.1 * scale, 0.1 * scale, self.tolerance)
-            parts[f"arm_insert_{side}"] = self.create_insert(loc, 0.1 * scale, 0.12 * scale, self.tolerance)
-        
-        # Conectores - Piernas
-        leg_locations = [
-            [-0.25 * scale, 0, 0.3 * scale],  # Izquierda
-            [0.25 * scale, 0, 0.3 * scale]    # Derecha
-        ]
-        for i, loc in enumerate(leg_locations):
-            side = "left" if i == 0 else "right"
-            parts[f"leg_socket_{side}"] = self.create_socket(loc, 0.1 * scale, 0.1 * scale, self.tolerance)
-            parts[f"leg_insert_{side}"] = self.create_insert(loc, 0.1 * scale, 0.12 * scale, self.tolerance)
         
         return parts
 
