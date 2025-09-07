@@ -47,10 +47,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Título
-st.title("🎨 Funko Chibi Generator")
-st.markdown("### Crea tu propio Funko Chibi personalizado para imprimir en 3D")
-
 # Inicializar generador
 if 'generator' not in st.session_state:
     st.session_state.generator = FunkoChibiGenerator()
@@ -64,10 +60,6 @@ col1, col2 = st.columns([1, 2])
 with col1:
     st.header("🔧 Configuración")
     st.markdown("---")
-
-    # Tipo de personaje
-    character_type = st.selectbox("Tipo de personaje", ["human", "child", "dog", "cat", "bear"])
-    generator.character_type = character_type
 
     # Género
     gender = st.selectbox("Género", ["male", "female", "neutral"])
@@ -91,13 +83,14 @@ with col1:
     generator.hair_style = hair_style
 
     # Ropa
-    st.selectbox("Ropa", ["none", "shirt", "hat"], disabled=True)
+    clothing = st.selectbox("Ropa", ["none", "shirt", "hat"])
+    generator.clothing = clothing
 
     st.markdown("---")
     
     # Botón generar
     if st.button("🚀 Generar Modelo 3D", use_container_width=True):
-        with st.spinner("Generando modelo 3D... Esto puede tardar unos segundos"):
+        with st.spinner("Generando modelo 3D..."):
             try:
                 parts = generator.generate_full_model()
                 st.session_state.parts = parts
@@ -129,7 +122,7 @@ with col1:
                         with open(zip_path, "rb") as f:
                             bytes_data = f.read()
                             b64 = base64.b64encode(bytes_data).decode()
-                            href = f'<a href="data:application/zip;base64,{b64}" download="funko_chibi_parts.zip">💾 Descargar ZIP con todas las partes</a>'
+                            href = f'<a href="application/zip;base64,{b64}" download="funko_chibi_parts.zip">💾 Descargar ZIP con todas las partes</a>'
                             st.markdown(href, unsafe_allow_html=True)
                             
                 except Exception as e:
@@ -140,60 +133,51 @@ with col2:
     st.markdown("---")
     
     if st.session_state.parts:
-        # Visualización 3D con Plotly
-        try:
-            fig = go.Figure()
-            
-            # Agregar cada parte al gráfico
-            colors = [
-                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
-                '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
-                '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA'
-            ]
-            
-            for i, (name, mesh) in enumerate(st.session_state.parts.items()):
-                if len(mesh.vertices) == 0:
-                    continue
-                    
-                # Obtener vértices y caras
-                vertices = mesh.vertices
-                faces = mesh.faces
+        fig = go.Figure()
+        
+        colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
+            '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+            '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA'
+        ]
+        
+        for i, (name, mesh) in enumerate(st.session_state.parts.items()):
+            if len(mesh.vertices) == 0:
+                continue
                 
-                if len(vertices) > 0 and len(faces) > 0:
-                    x, y, z = vertices.T
-                    i_indices, j_indices, k_indices = faces.T
-                    
-                    fig.add_trace(go.Mesh3d(
-                        x=x, y=y, z=z,
-                        i=i_indices, j=j_indices, k=k_indices,
-                        name=name,
-                        showscale=False,
-                        opacity=0.9,
-                        color=colors[i % len(colors)],
-                        hovertemplate=f'<b>{name}</b><extra></extra>'
-                    ))
+            vertices = mesh.vertices
+            faces = mesh.faces
             
-            fig.update_layout(
-                scene=dict(
-                    xaxis=dict(title='X'),
-                    yaxis=dict(title='Y'),
-                    zaxis=dict(title='Z'),
-                    aspectmode='data'
-                ),
-                title="Vista 3D del Funko Chibi",
-                height=600,
-                margin=dict(l=0, r=0, t=40, b=0)
-            )
+            x, y, z = vertices.T
+            i_indices, j_indices, k_indices = faces.T
             
-            st.plotly_chart(fig, use_container_width=True)
-            
-        except Exception as e:
-            st.warning("⚠️ No se pudo generar la vista 3D. Las partes se exportarán correctamente.")
-            st.info("ℹ️ La vista 3D es solo para visualización. Las partes se generan correctamente para impresión 3D.")
+            fig.add_trace(go.Mesh3d(
+                x=x, y=y, z=z,
+                i=i_indices, j=j_indices, k=k_indices,
+                name=name,
+                showscale=False,
+                opacity=0.9,
+                color=colors[i % len(colors)],
+                hovertemplate=f'<b>{name}</b><extra></extra>'
+            ))
+        
+        fig.update_layout(
+            scene=dict(
+                xaxis=dict(title='X'),
+                yaxis=dict(title='Y'),
+                zaxis=dict(title='Z'),
+                aspectmode='data'
+            ),
+            title="Vista 3D del Funko Chibi",
+            height=600,
+            margin=dict(l=0, r=0, t=40, b=0)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("👆 Configura las opciones y haz clic en 'Generar Modelo 3D'")
         st.image("https://placehold.co/600x400/4ECDC4/FFFFFF?text=Funko+Chibi+Generator", 
-                caption="Diseña tu Funko Chibi", use_container_width=True)
+                caption="Diseña tu Funko Chibi", use_column_width=True)
 
 # Footer
 st.markdown("---")
