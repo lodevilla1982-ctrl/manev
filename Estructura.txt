@@ -1,0 +1,24 @@
+funko_chibi/
+├── app.py
+├── requirements.txt
+├── assets/
+│   ├── heads/
+│   │   ├── male_head.stl
+│   │   ├── female_head.stl
+│   │   └── child_head.stl
+│   ├── hair/
+│   │   ├── short_male.stl
+│   │   ├── long_female.stl
+│   │   └── bald.stl
+│   ├── eyes/
+│   │   ├── eye_white.stl
+│   │   └── pupil_black.stl
+│   ├── body/
+│   │   ├── male_torso.stl
+│   │   └── female_torso.stl
+│   ├── arms/
+│   │   └── arm_left.stl
+│   └── legs/
+│       └── leg_left.stl
+└── utils/
+    └── generator.py

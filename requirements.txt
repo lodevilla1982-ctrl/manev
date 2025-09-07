@@ -1,0 +1,6 @@
+streamlit==1.32.0
+numpy==1.24.3
+trimesh==4.0.5
+matplotlib==3.7.1
+plotly==5.15.0
+stl==0.0.5
